@@ -25,15 +25,15 @@ namespace BookStore.Repository
         }
         public async Task<BookModel> GetBookDetailsById(int BookId)
         {
-            //var book = await _context.Books.Where(x => x.Id == BookId).Select(x => new BookModel()
-            //{
-            //    Id = x.Id,
-            //    Title = x.Title,
-            //    Description = x.Description
-            //}).FirstOrDefaultAsync();
-            //return book;
-            var book = await _context.Books.FindAsync(BookId);
-            return _mapper.Map<BookModel>(book);
+            var book = await _context.Books.Where(x => x.Id == BookId).Select(x => new BookModel()
+            {
+                Id = x.Id,
+                Title = x.Title,
+                Description = x.Description
+            }).FirstOrDefaultAsync();
+            return book;
+            //var book = await _context.Books.FindAsync(BookId);
+            //return _mapper.Map<BookModel>(book);
         }
         public async Task<int> AddBook(BookModel bookModel)
         {
