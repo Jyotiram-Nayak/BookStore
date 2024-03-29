@@ -7,5 +7,7 @@ namespace BookStore.Repository
     {
         Task<IdentityResult> SignUpAsync(SignUpModel signUpModel);
         Task<string> SignInAsync(SignInModel signInModel);
+        Task<IdentityResult> ConfirmEmail(string uid, string token);
+        Task<IdentityResult> ChangePasswordAsync(ChangePasswordModel changePassword);
     }
 }

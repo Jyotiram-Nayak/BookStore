@@ -1,11 +1,12 @@
 using BookStore.Data;
 using BookStore.Model;
 using BookStore.Repository;
+using BookStore.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,11 +15,14 @@ builder.Services.AddControllers().AddNewtonsoftJson();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddIdentity<BookStoreUser, IdentityRole>().AddEntityFrameworkStores<BookStoreDBContext>().AddDefaultTokenProviders();
+builder.Services.AddIdentity<BookStoreUser, IdentityRole>(option => option.SignIn.RequireConfirmedEmail= true).AddEntityFrameworkStores<BookStoreDBContext>().AddDefaultTokenProviders();
 
 builder.Services.AddTransient<IBookRepository, BookRepository>();
 builder.Services.AddTransient<IAccountRepository, AccountRepository>();
+builder.Services.AddTransient<IEmailRepository, EmailRepository>();
+builder.Services.AddTransient<IUserService, UserService>();
 
+builder.Services.Configure<SMTPConfiguration>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddAutoMapper(typeof(Program));
 
 //var provider = builder.Services.BuildServiceProvider();
@@ -37,19 +41,36 @@ builder.Services.AddAuthentication(option =>
     {
         ValidateIssuer = true,
         ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
         ValidAudience = builder.Configuration["JWT:ValidAudience"],
         ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"])),
+        NameClaimType = ClaimTypes.NameIdentifier
     };
 });
+
 var app = builder.Build();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var roles = new[] { "Admin", "User"};
 
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+}
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
